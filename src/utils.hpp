@@ -2,13 +2,19 @@
 #define UTILS_HPP
 
 #include <iostream>
+#include <vector>
+#include <cmath>
+#include <string>
+
+#include <fstream>
+#include <sstream>
 
 #include "tgaimage.hpp"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
-const int width = 500;
-const int height = 500;
+const TGAColor green = TGAColor(0, 255, 0, 255);
+const TGAColor blue = TGAColor(0, 0, 255, 255);
 
 struct Point
 {
