@@ -7,6 +7,8 @@ struct Model
 {
     std::vector<Point> vertices;
     std::vector<Triangle> triangles;
+    std::vector<Triangle> textures;
+    std::vector<Triangle> normals;
 
     Model(const std::string filename, int width, int height, float scale = 1.0)
     {
@@ -54,6 +56,8 @@ struct Model
                 normal.p3--;
 
                 triangles.push_back(shape);
+                textures.push_back(texture);
+                normals.push_back(normal);
             }
         }
     }
