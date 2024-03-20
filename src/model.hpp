@@ -10,8 +10,16 @@ struct Model
     std::vector<Triangle> textures;
     std::vector<Triangle> normals;
 
+    int *zBuffer;
+
     Model(const std::string filename, int width, int height, float scale = 1.0)
     {
+        zBuffer = new int[width * height];
+        for (int i = 0; i < width * height; i++)
+        {
+            zBuffer[i] = std::numeric_limits<int>::min();
+        }
+
         std::ifstream file(filename);
         if (!file.is_open())
         {
@@ -69,9 +77,6 @@ struct Model
                 normal.p3--;
 
                 triangles.push_back(Triangle(vertices[shape.p1], vertices[shape.p2], vertices[shape.p3]));
-                // Sort the triangles by the z-coordinate --> painter's algorithm
-                std::sort(triangles.begin(), triangles.end(), [](Triangle a, Triangle b)
-                          { return a.p1.z < b.p1.z; });
                 textures.push_back(Triangle(vertices[texture.p1], vertices[texture.p2], vertices[texture.p3]));
                 normals.push_back(Triangle(vertices[normal.p1], vertices[normal.p2], vertices[normal.p3]));
             }
@@ -122,7 +127,7 @@ struct Model
 #pragma omp parallel for
         for (int i = 0; i < triangles.size(); i++)
         {
-            fillTriangleWithBackFaceCulling(triangles[i], normals[i], image);
+            fillTriangleWithBackFaceCulling(triangles[i], normals[i], image, zBuffer);
         }
     }
 };

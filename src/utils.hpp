@@ -222,7 +222,7 @@ void fillTriangleLerp(Triangle &t, TGAImage &image)
     }
 }
 
-void fillTriangleWithBackFaceCulling(Triangle &t, Triangle &normal, TGAImage &image)
+void fillTriangleWithBackFaceCulling(Triangle &t, Triangle &normal, TGAImage &image, int *zBuffer)
 {
     // Bounding box
     int minX = std::min(std::min(t.p1.x, t.p2.x), t.p3.x);
@@ -243,8 +243,17 @@ void fillTriangleWithBackFaceCulling(Triangle &t, Triangle &normal, TGAImage &im
                 Vec3f normal = (p3 - p1) ^ (p2 - p1);
                 Vec3f lightDir = Vec3f(0, 0, -1);
                 float dot = normal.normalize() * lightDir.normalize();
-                // std::clog << "dot: " << dot << "\n";
                 if (dot < 0)
+                {
+                    continue;
+                }
+
+                // Z-buffering
+                if (zBuffer[y * image.get_width() + x] < p.z)
+                {
+                    zBuffer[y * image.get_width() + x] = p.z;
+                }
+                else
                 {
                     continue;
                 }
