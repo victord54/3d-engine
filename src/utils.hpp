@@ -21,11 +21,6 @@ TGAColor randomColor()
     return TGAColor(rand() % 255, rand() % 255, rand() % 255, 255);
 }
 
-TGAColor randomColor()
-{
-    return TGAColor(rand() % 255, rand() % 255, rand() % 255, 255);
-}
-
 struct Point
 {
     float x;
