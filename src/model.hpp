@@ -39,6 +39,11 @@ struct Model
                 p.y = ((p.y + 1.) * 0.5 * height);
                 p.z *= 800;
 
+                float r = (p.x + 1.) * 0.5 * 255;
+                float g = (p.y + 1.) * 0.5 * 255;
+                float b = (p.z + 1.) * 0.5 * 255;
+                p.color = TGAColor(r, g, b, 255);
+
                 vertices.push_back(p);
             }
 
