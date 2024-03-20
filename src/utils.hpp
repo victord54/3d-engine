@@ -9,6 +9,9 @@
 #include <fstream>
 #include <sstream>
 
+#include <algorithm>
+#include <filesystem>
+
 #include "tgaimage.hpp"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
