@@ -256,6 +256,9 @@ TGAColor TGAImage::get(int x, int y) {
 }
 
 bool TGAImage::set(int x, int y, TGAColor c) {
+    // Denormalize the point to match the screen size
+    //x = ((x + 1.) * 0.5 * width);
+    // y = ((y + 1.) * 0.5 * height);
 	if (!data || x<0 || y<0 || x>=width || y>=height) {
 		return false;
 	}

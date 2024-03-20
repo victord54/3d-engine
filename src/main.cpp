@@ -18,8 +18,11 @@ int main(int argc, char **argv)
 
     Model model(filename, width, height);
 
-    model.drawTriangles(image, white);
-    model.drawVertices(image, green);
+    // model.drawTriangles(image, white);
+    // model.drawVertices(image, green);
+    // model.fillTriangles(image);
+    // model.fillTrianglesLerp(image);
+    model.fillTrianglesWithBackFaceCulling(image);
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("output.tga");
