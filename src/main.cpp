@@ -4,8 +4,8 @@
 int main(int argc, char **argv)
 {
 
-    const int width = 800;
-    const int height = 800;
+    const int width = 1000;
+    const int height = 1000;
 
     TGAImage image(width, height, TGAImage::RGB);
 
@@ -25,6 +25,8 @@ int main(int argc, char **argv)
     model.fillTrianglesWithBackFaceCulling(image);
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-    image.write_tga_file("output.tga");
+    // Create out folder if it doesn't exist
+    std::filesystem::create_directory("out");
+    image.write_tga_file("out/output.tga");
     return 0;
 }

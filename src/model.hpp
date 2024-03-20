@@ -76,6 +76,7 @@ struct Model
                 normals.push_back(Triangle(vertices[normal.p1], vertices[normal.p2], vertices[normal.p3]));
             }
         }
+        std::clog << "Loaded " << filename << " with " << vertices.size() << " vertices and " << triangles.size() << " triangles\n";
     }
 
     void drawVertices(TGAImage &image, TGAColor color)
