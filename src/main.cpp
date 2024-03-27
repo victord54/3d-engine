@@ -4,12 +4,16 @@
 int main(int argc, char **argv)
 {
 
-    const int width = 1000;
-    const int height = 1000;
+    const int width = 1024;
+    const int height = 1024;
 
     TGAImage image(width, height, TGAImage::RGB);
 
     std::string filename = "../obj/african_head/african_head.obj";
+
+    TGAImage imageTexture;
+    imageTexture.read_tga_file("../obj/african_head/african_head_diffuse.tga");
+    imageTexture.flip_vertically();
 
     if (argc >= 2)
     {
@@ -22,7 +26,9 @@ int main(int argc, char **argv)
     // model.drawVertices(image, green);
     // model.fillTriangles(image);
     // model.fillTrianglesLerp(image);
-    model.fillTrianglesWithBackFaceCulling(image);
+    // model.fillTrianglesWithBackFaceCulling(image);
+    // model.fillTrianglesWithTexture(image, imageTexture);
+    model.fillTrianglesWithNormal(image, imageTexture);
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     // Create out folder if it doesn't exist
