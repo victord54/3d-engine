@@ -4,15 +4,15 @@
 int main(int argc, char **argv)
 {
 
-    const int width = 1024;
-    const int height = 1024;
+    const int width = 1000;
+    const int height = 1000;
 
     TGAImage image(width, height, TGAImage::RGB);
 
-    std::string filename = "../obj/african_head/african_head.obj";
+    std::string filename = "obj/african_head/african_head.obj";
 
     TGAImage imageTexture;
-    imageTexture.read_tga_file("../obj/african_head/african_head_diffuse.tga");
+    imageTexture.read_tga_file("obj/african_head/african_head_diffuse.tga");
     imageTexture.flip_vertically();
 
     if (argc >= 2)
