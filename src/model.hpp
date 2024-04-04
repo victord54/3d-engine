@@ -9,6 +9,7 @@ struct Model
 {
     std::vector<vec3> vertices_;
     std::vector<std::vector<int>> faces_;
+    std::vector<vec3> normals_;
 
     Model(const std::string filename);
 

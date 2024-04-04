@@ -1,12 +1,18 @@
 #include <iostream>
+#include <filesystem>
+#define _USE_MATH_DEFINES
+#include <cmath>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #include "tgaimage.hpp"
 #include "geometry.hpp"
 #include "model.hpp"
 #include "camera.hpp"
 
-#define WIDTH 800
-#define HEIGHT 800
+#define WIDTH 500
+#define HEIGHT 500
 
 const TGAColor red = TGAColor(255, 0, 0, 255);
 
@@ -96,8 +102,7 @@ int main(int argc, char const *argv[])
     const int width = WIDTH - 1;
     const int height = HEIGHT - 1;
     TGAImage image(WIDTH, HEIGHT, TGAImage::RGB);
-    Camera camera;
-    camera.setView(vec3(0, 0, 0), vec3(0, 0, 1)); // BUG: The camera y origin is inverted in the viewMatrix method of the Camera struct
+    Camera camera(vec3(0, 0, 2), vec3(0, 0, 0), 90, 0.1, 1000);
     Model model("obj/african_head/african_head.obj");
     std::clog << "Model loaded with " << model.nverts() << " vertices and " << model.nfaces() << " faces" << std::endl;
 
@@ -128,17 +133,81 @@ int main(int argc, char const *argv[])
             std::clog << "cp0: " << cp0 << " cp1: " << cp1 << std::endl;
 
             // TODO: Transforming the vertices from camera space to projection space
+            vec4 pr0 = camera.projectionMatrix(WIDTH, HEIGHT) * cp0;
+            vec4 pr1 = camera.projectionMatrix(WIDTH, HEIGHT) * cp1;
+            std::clog << "pr0: " << pr0 << " pr1: " << pr1 << std::endl;
 
-            // TODO: Transforming the vertices from projection space to screen space
+            // TODO: Transforming the vertices from projection space to perspective space
+            vec3 pp0 = camera.perspectiveDivide(pr0);
+            vec3 pp1 = camera.perspectiveDivide(pr1);
 
             // TODO: Drawing the triangle
 
-            vec2 p0 = vec2((cp0.x + 1.0) * width / 2.0, (cp0.y + 1.0) * height / 2.0);
-            vec2 p1 = vec2((cp1.x + 1.0) * width / 2.0, (cp1.y + 1.0) * height / 2.0);
+            vec2 p0 = vec2((pp0.x + 1.0) * width / 2.0, (pp0.y + 1.0) * height / 2.0);
+            vec2 p1 = vec2((pp1.x + 1.0) * width / 2.0, (pp1.y + 1.0) * height / 2.0);
 
             draw_line(p0.x, p0.y, p1.x, p1.y, image, red);
         }
     }
+
+    // // Vertices of a cube
+    // std::vector<vec3> vertices = {
+    //     vec3(-1, -1, -1),
+    //     vec3(1, -1, -1),
+    //     vec3(1, 1, -1),
+    //     vec3(-1, 1, -1),
+    //     vec3(-1, -1, 1),
+    //     vec3(1, -1, 1),
+    //     vec3(1, 1, 1),
+    //     vec3(-1, 1, 1)};
+
+    // // Indices of the vertices that make up the faces of the cube
+    // std::vector<std::vector<int>> faces = {
+    //     {0, 1, 2, 3},
+    //     {4, 5, 6, 7},
+    //     {0, 1, 5, 4},
+    //     {2, 3, 7, 6},
+    //     {0, 3, 7, 4},
+    //     {1, 2, 6, 5}};
+
+    // for (int i = 0; i < faces.size(); i++)
+    // {
+    //     std::vector<int> face = faces[i];
+    //     for (int j = 0; j < 4; j++)
+    //     {
+    //         vec3 mp0 = vertices[face[j]];
+    //         vec3 mp1 = vertices[face[(j + 1) % 4]];
+    //         std::clog << "mp0: " << mp0 << " mp1: " << mp1 << std::endl;
+
+    //         // Transforming the vertices from model space to world space
+    //         vec4 wp0 = M * vec4(mp0.x, mp0.y, mp0.z, 1);
+    //         vec4 wp1 = M * vec4(mp1.x, mp1.y, mp1.z, 1);
+    //         std::clog << "wp0: " << wp0 << " wp1: " << wp1 << std::endl;
+
+    //         // Transforming the vertices from world space to camera space
+    //         vec4 cp0 = camera.viewMatrix() * wp0;
+    //         vec4 cp1 = camera.viewMatrix() * wp1;
+    //         std::clog << "cp0: " << cp0 << " cp1: " << cp1 << std::endl;
+
+    //         // Transforming the vertices from camera space to projection space
+    //         vec4 pr0 = camera.projectionMatrix(WIDTH, HEIGHT) * cp0;
+    //         vec4 pr1 = camera.projectionMatrix(WIDTH, HEIGHT) * cp1;
+    //         std::clog << "pr0: " << pr0 << " pr1: " << pr1 << std::endl;
+
+    //         // Transforming the vertices from projection space to perspective space
+    //         vec3 pp0 = camera.perspectiveDivide(pr0);
+    //         vec3 pp1 = camera.perspectiveDivide(pr1);
+    //         std::clog << "pp0: " << pp0 << " pp1: " << pp1 << std::endl;
+
+    //         // Drawing the triangle
+    //         vec2 p0 = vec2((pp0.x + 1.0) * width / 2.0, (pp0.y + 1.0) * height / 2.0);
+    //         vec2 p1 = vec2((pp1.x + 1.0) * width / 2.0, (pp1.y + 1.0) * height / 2.0);
+    //         std::clog << "p0: " << p0 << " p1: " << p1 << std::endl
+    //                   << std::endl;
+
+    //         draw_line(p0.x, p0.y, p1.x, p1.y, image, red);
+    //     }
+    // }
 
     // Create out folder if it doesn't exist
     std::filesystem::create_directory("out");

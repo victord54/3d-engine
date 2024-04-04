@@ -26,10 +26,20 @@ Model::Model(const std::string filename)
             }
             vertices_.push_back(v);
         }
+        else if (!line.compare(0, 3, "vn "))
+        {
+            iss >> trash >> trash;
+            vec3 n;
+            for (int i = 0; i < 3; i++)
+            {
+                iss >> n[i];
+            }
+            normals_.push_back(n);
+        }
         else if (!line.compare(0, 2, "f "))
         {
             std::vector<int> f;
-            int itrash, idx;
+            int itrash, idx, idxuv, idxn;
             iss >> trash;
             while (iss >> idx >> trash >> itrash >> trash >> itrash)
             {
