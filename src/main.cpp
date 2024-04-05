@@ -15,9 +15,8 @@
 #define WIDTH 800
 #define HEIGHT 800
 
-const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor black = TGAColor(0, 0, 0, 255);
+const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor green = TGAColor(0, 255, 0, 255);
 const TGAColor blue = TGAColor(0, 0, 255, 255);
 
@@ -112,7 +111,7 @@ vec3 barycentric(vec2 p0, vec2 p1, vec2 p2, vec2 p)
     return vec3(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
 }
 
-void fill_triangle(vec3 p0, vec3 p1, vec3 p2, double *zbuffer, TGAImage &image, const TGAColor &color)
+void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, double *zbuffer, TGAImage &image, const TGAColor &color)
 {
     // Boundig box
     int minX = std::min(p0.x, std::min(p1.x, p2.x));
@@ -120,24 +119,34 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, double *zbuffer, TGAImage &image, 
     int maxX = std::max(p0.x, std::max(p1.x, p2.x));
     int maxY = std::max(p0.y, std::max(p1.y, p2.y));
 
-#pragma omp parallel for collapse(2)
     for (int x = minX; x <= maxX; x++)
     {
         for (int y = minY; y <= maxY; y++)
         {
+            TGAColor p_color = color;
             vec3 p = vec3(x, y, 0);
             vec3 bc = barycentric(vec2(p0.x, p0.y), vec2(p1.x, p1.y), vec2(p2.x, p2.y), vec2(p.x, p.y));
             if (bc.x < 0 || bc.y < 0 || bc.z < 0)
                 continue;
 
+            // Goroud shading
+            vec3 light_pos = normalize(vec3(0, 0, 1));
+            vec3 normal = normalize(vec3(wn0.x * bc.x + wn1.x * bc.y + wn2.x * bc.z,
+                                         wn0.y * bc.x + wn1.y * bc.y + wn2.y * bc.z,
+                                         wn0.z * bc.x + wn1.z * bc.y + wn2.z * bc.z));
+            double intensity = dot(normal, light_pos);
+            p_color.r = color.r * intensity;
+            p_color.g = color.g * intensity;
+            p_color.b = color.b * intensity;
+
+            // Z-buffer
             p.z = p0.z * bc.x + p1.z * bc.y + p2.z * bc.z;
             int idx = x + y * WIDTH;
-            // if (zbuffer[idx] < p.z)
-            // {
-            //     zbuffer[idx] = p.z;
-            //     image.set(x, y, color);
-            // }
-            image.set(x, y, color);
+            if (zbuffer[idx] > p.z)
+            {
+                zbuffer[idx] = p.z;
+                image.set(x, y, p_color);
+            }
         }
     }
 }
@@ -154,7 +163,11 @@ int main(int argc, char const *argv[])
     TGAImage image(WIDTH, HEIGHT, TGAImage::RGB);
     Camera camera(vec3(0, 0, 2.1), vec3(0, 0, 0), 90, 0.1, 1000);
     Model model("obj/african_head/african_head.obj");
-    // std::clog << "Model loaded with " << model.nverts() << " vertices and " << model.nfaces() << " faces" << std::endl;
+    std::clog << "Model loaded" << std::endl;
+    std::clog << "Number of vertices: " << model.nverts() << std::endl;
+    std::clog << "Number of faces: " << model.nfaces() << std::endl;
+    std::clog << "Number of normals: " << model.normals_.size() << std::endl;
+    std::clog << "Number of face normals: " << model.faceNormals_.size() << std::endl;
 
     // Transformation matrix
     mat4 T = translate(vec3(0, 0, 0));
@@ -162,28 +175,45 @@ int main(int argc, char const *argv[])
     mat4 R = rotate(vec3(0, angle, 0));
     mat4 M = T * S * R;
 
-    double zbuffer[WIDTH * HEIGHT] = {0};
+    double zbuffer[WIDTH * HEIGHT];
 
-#pragma omp parallel for
+    for (int i = 0; i < WIDTH * HEIGHT; i++)
+    {
+        zbuffer[i] = std::numeric_limits<double>::max();
+    }
+#pragma omp parallel
     for (int i = 0; i < model.nfaces(); i++)
     {
         std::vector<int> face = model.face(i);
+        std::vector<int> faceNormal = model.faceNormal(i);
 
         vec3 mp0 = model.vert(face[0]);
         vec3 mp1 = model.vert(face[1]);
         vec3 mp2 = model.vert(face[2]);
+
+        vec3 mn0 = model.normal(faceNormal[0]);
+        vec3 mn1 = model.normal(faceNormal[1]);
+        vec3 mn2 = model.normal(faceNormal[2]);
         // std::clog << "Model vertices " << mp0 << ", " << mp1 << ", " << mp2 << std::endl;
 
         // Apply transformation matrix to world coordinates
         vec4 wp0 = M * vec4(mp0.x, mp0.y, mp0.z, 1);
         vec4 wp1 = M * vec4(mp1.x, mp1.y, mp1.z, 1);
         vec4 wp2 = M * vec4(mp2.x, mp2.y, mp2.z, 1);
+
+        vec4 wn0 = M * vec4(mn0.x, mn0.y, mn0.z, 1);
+        vec4 wn1 = M * vec4(mn1.x, mn1.y, mn1.z, 1);
+        vec4 wn2 = M * vec4(mn2.x, mn2.y, mn2.z, 1);
         // std::clog << "World vertices " << wp0 << ", " << wp1 << ", " << wp2 << std::endl;
 
         // Apply camera view matrix
         vec4 cp0 = camera.viewMatrix() * wp0;
         vec4 cp1 = camera.viewMatrix() * wp1;
         vec4 cp2 = camera.viewMatrix() * wp2;
+
+        vec4 cn0 = camera.viewMatrix() * wn0;
+        vec4 cn1 = camera.viewMatrix() * wn1;
+        vec4 cn2 = camera.viewMatrix() * wn2;
 
         // Apply camera projection matrix
         vec4 pp0 = camera.projectionMatrix() * cp0;
@@ -195,18 +225,6 @@ int main(int argc, char const *argv[])
         vec3 p1 = camera.perspectiveDivide(pp1);
         vec3 p2 = camera.perspectiveDivide(pp2);
 
-        // Backface culling on the world coordinates
-        vec3 wmp0 = vec3(wp0.x, wp0.y, wp0.z);
-        vec3 wmp1 = vec3(wp1.x, wp1.y, wp1.z);
-        vec3 wmp2 = vec3(wp2.x, wp2.y, wp2.z);
-        vec3 n = normalize(cross(wmp1 - wmp0, wmp2 - wmp0));
-        vec3 light = normalize(vec3(0, 0, 1));
-        double intensity = dot(n, light);
-        if (intensity < 0.)
-        {
-            continue;
-        }
-
         // Convert to screen coordinates
         p0.x = (p0.x + 1) * width / 2;
         p0.y = (p0.y + 1) * height / 2;
@@ -215,19 +233,8 @@ int main(int argc, char const *argv[])
         p2.x = (p2.x + 1) * width / 2;
         p2.y = (p2.y + 1) * height / 2;
 
-        TGAColor color = white;
-
-        color.r *= intensity;
-        color.g *= intensity;
-        color.b *= intensity;
-
-        fill_triangle(p0, p1, p2, zbuffer, image, color); // BUG: Problem with the perspective divide and framebuffer
-
-        // draw_line(p0.x, p0.y, p1.x, p1.y, image, color);
-        // draw_line(p1.x, p1.y, p2.x, p2.y, image, color);
-        // draw_line(p2.x, p2.y, p0.x, p0.y, image, color);
-
-        // std::clog << std::endl;
+        // Draw triangle
+        fill_triangle(p0, p1, p2, wn0, wn1, wn2, zbuffer, image, white);
     }
 
     // Create out folder if it doesn't exist
