@@ -88,6 +88,8 @@ struct Camera
         v.y = result[1][0];
         v.z = result[2][0];
 
+        return vec3(point.x, point.y, point.z);
+
         return v;
     }
 };
