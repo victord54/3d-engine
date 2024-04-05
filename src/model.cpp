@@ -39,14 +39,18 @@ Model::Model(const std::string filename)
         else if (!line.compare(0, 2, "f "))
         {
             std::vector<int> f;
-            int itrash, idx, idxuv, idxn;
+            std::vector<int> fn;
+            int itrash, idx, idxn;
             iss >> trash;
-            while (iss >> idx >> trash >> itrash >> trash >> itrash)
+            while (iss >> idx >> trash >> itrash >> trash >> idxn)
             {
-                idx--;
+                idx--; // in wavefront obj all indices start at 1, not zero
+                idxn--;
                 f.push_back(idx);
+                fn.push_back(idxn);
             }
             faces_.push_back(f);
+            faceNormals_.push_back(fn);
         }
     }
 }
@@ -69,4 +73,14 @@ vec3 Model::vert(int i)
 std::vector<int> Model::face(int idx)
 {
     return faces_[idx];
+}
+
+vec3 Model::normal(int i)
+{
+    return normals_[i];
+}
+
+std::vector<int> Model::faceNormal(int idx)
+{
+    return faceNormals_[idx];
 }

@@ -10,6 +10,7 @@ struct Model
     std::vector<vec3> vertices_;
     std::vector<std::vector<int>> faces_;
     std::vector<vec3> normals_;
+    std::vector<std::vector<int>> faceNormals_;
 
     Model(const std::string filename);
 
@@ -17,4 +18,6 @@ struct Model
     int nfaces();
     vec3 vert(int i);
     std::vector<int> face(int idx);
+    vec3 normal(int i);
+    std::vector<int> faceNormal(int idx);
 };
