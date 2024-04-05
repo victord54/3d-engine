@@ -1,8 +1,5 @@
 {
     "editor.tabSize": 4,
     "editor.insertSpaces": true,
-    "files.eol": "\n",
-    "files.associations": {
-        "iostream": "cpp"
-    },
+    "files.eol": "\n"
 }
