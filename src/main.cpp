@@ -12,8 +12,8 @@
 #include "model.hpp"
 #include "camera.hpp"
 
-#define WIDTH 500
-#define HEIGHT 500
+#define WIDTH 800
+#define HEIGHT 800
 
 const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor white = TGAColor(255, 255, 255, 255);
@@ -132,12 +132,12 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, double *zbuffer, TGAImage &image, 
 
             p.z = p0.z * bc.x + p1.z * bc.y + p2.z * bc.z;
             int idx = x + y * WIDTH;
-            if (zbuffer[idx] < p.z)
-            {
-                zbuffer[idx] = p.z;
-                image.set(x, y, color);
-            }
-            // image.set(x, y, color);
+            // if (zbuffer[idx] < p.z)
+            // {
+            //     zbuffer[idx] = p.z;
+            //     image.set(x, y, color);
+            // }
+            image.set(x, y, color);
         }
     }
 }
@@ -202,30 +202,30 @@ int main(int argc, char const *argv[])
         vec3 n = normalize(cross(wmp1 - wmp0, wmp2 - wmp0));
         vec3 light = normalize(vec3(0, 0, 1));
         double intensity = dot(n, light);
-        // if (intensity < 0)
-        // {
-        //     continue;
-        // }
+        if (intensity < 0.)
+        {
+            continue;
+        }
 
         // Convert to screen coordinates
-        p0.x = (pp0.x + 1) * width / 2;
-        p0.y = (pp0.y + 1) * height / 2;
-        p1.x = (pp1.x + 1) * width / 2;
-        p1.y = (pp1.y + 1) * height / 2;
-        p2.x = (pp2.x + 1) * width / 2;
-        p2.y = (pp2.y + 1) * height / 2;
+        p0.x = (p0.x + 1) * width / 2;
+        p0.y = (p0.y + 1) * height / 2;
+        p1.x = (p1.x + 1) * width / 2;
+        p1.y = (p1.y + 1) * height / 2;
+        p2.x = (p2.x + 1) * width / 2;
+        p2.y = (p2.y + 1) * height / 2;
 
         TGAColor color = white;
 
-        // color.r *= intensity;
-        // color.g *= intensity;
-        // color.b *= intensity;
+        color.r *= intensity;
+        color.g *= intensity;
+        color.b *= intensity;
 
-        // fill_triangle(p0, p1, p2, zbuffer, image, color);
+        fill_triangle(p0, p1, p2, zbuffer, image, color); // BUG: Problem with the perspective divide and framebuffer
 
-        draw_line(p0.x, p0.y, p1.x, p1.y, image, color);
-        draw_line(p1.x, p1.y, p2.x, p2.y, image, color);
-        draw_line(p2.x, p2.y, p0.x, p0.y, image, color);
+        // draw_line(p0.x, p0.y, p1.x, p1.y, image, color);
+        // draw_line(p1.x, p1.y, p2.x, p2.y, image, color);
+        // draw_line(p2.x, p2.y, p0.x, p0.y, image, color);
 
         // std::clog << std::endl;
     }

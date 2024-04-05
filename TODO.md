@@ -1,1 +1,0 @@
-[ ] Reformat the coordinates to work with normalized ones
