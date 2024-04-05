@@ -111,7 +111,7 @@ vec3 barycentric(vec2 p0, vec2 p1, vec2 p2, vec2 p)
     return vec3(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
 }
 
-void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, double *zbuffer, TGAImage &image, const TGAColor &color)
+void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, double *zbuffer, TGAImage &image, TGAImage &texture)
 {
     // Boundig box
     int minX = std::min(p0.x, std::min(p1.x, p2.x));
@@ -123,7 +123,7 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, doub
     {
         for (int y = minY; y <= maxY; y++)
         {
-            TGAColor p_color = color;
+            TGAColor p_color = TGAColor(255, 255, 255, 255);
             vec3 p = vec3(x, y, 0);
             vec3 bc = barycentric(vec2(p0.x, p0.y), vec2(p1.x, p1.y), vec2(p2.x, p2.y), vec2(p.x, p.y));
             if (bc.x < 0 || bc.y < 0 || bc.z < 0)
@@ -135,9 +135,9 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, doub
                                          wn0.y * bc.x + wn1.y * bc.y + wn2.y * bc.z,
                                          wn0.z * bc.x + wn1.z * bc.y + wn2.z * bc.z));
             double intensity = dot(normal, light_pos);
-            p_color.r = color.r * intensity;
-            p_color.g = color.g * intensity;
-            p_color.b = color.b * intensity;
+            p_color.r *= intensity;
+            p_color.g *= intensity;
+            p_color.b *= intensity;
 
             // Z-buffer
             p.z = p0.z * bc.x + p1.z * bc.y + p2.z * bc.z;
@@ -145,6 +145,13 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, doub
             if (zbuffer[idx] > p.z)
             {
                 zbuffer[idx] = p.z;
+
+                // Texture mapping
+                vec2 uv = vec2(0, 0);
+                uv.x = wn0.x * bc.x + wn1.x * bc.y + wn2.x * bc.z;
+                uv.y = wn0.y * bc.x + wn1.y * bc.y + wn2.y * bc.z;
+                // Normalize uv coordinates
+                // p_color = texture.get(uv.x * texture.get_width(), uv.y * texture.get_height());
                 image.set(x, y, p_color);
             }
         }
@@ -161,6 +168,9 @@ int main(int argc, char const *argv[])
     const int width = WIDTH - 1;
     const int height = HEIGHT - 1;
     TGAImage image(WIDTH, HEIGHT, TGAImage::RGB);
+    TGAImage texture;
+    texture.read_tga_file("obj/african_head/african_head_diffuse.tga");
+    texture.flip_vertically();
     Camera camera(vec3(0, 0, 2.1), vec3(0, 0, 0), 90, 0.1, 1000);
     Model model("obj/african_head/african_head.obj");
     std::clog << "Model loaded" << std::endl;
@@ -234,7 +244,7 @@ int main(int argc, char const *argv[])
         p2.y = (p2.y + 1) * height / 2;
 
         // Draw triangle
-        fill_triangle(p0, p1, p2, wn0, wn1, wn2, zbuffer, image, white);
+        fill_triangle(p0, p1, p2, wn0, wn1, wn2, zbuffer, image, texture);
     }
 
     // Create out folder if it doesn't exist
