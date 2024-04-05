@@ -13,7 +13,9 @@ struct Camera
     double near;
     double far;
 
-    Camera(vec3 pos = vec3(0, 0, 0), vec3 lookAt = vec3(0, 0, 1), double fov = 90, double near = 0.1, double far = 1000) : pos(pos), lookAt(lookAt), fov(fov), near(near), far(far)
+    double aspect;
+
+    Camera(vec3 pos = vec3(0, 0, 0), vec3 lookAt = vec3(0, 0, 1), double fov = 90, double near = 0.1, double far = 1000, double aspect = 1) : pos(pos), lookAt(lookAt), fov(fov), near(near), far(far), aspect(aspect)
     {
         update();
     }
@@ -53,9 +55,8 @@ struct Camera
         return rotation * translation;
     }
 
-    mat4 projectionMatrix(int WIDTH, int HEIGHT)
+    mat4 projectionMatrix()
     {
-        double aspect = (double)WIDTH / HEIGHT;
         double fovRad = std::tan((fov * 0.5) * (M_PI / 180));
         mat4 matrix = mat4::identity();
         matrix[0][0] = 1 / (aspect * fovRad);
