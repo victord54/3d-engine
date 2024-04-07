@@ -29,3 +29,7 @@ I added the texture mapping algorithm to render the faces of the object with a t
 You can see the result below.
 
 ![African head with texture mapping](gif/african_head_texture_mapping.gif)
+
+And now with the Gouraud shading algorithm and the texture mapping algorithm.
+
+![African head with Gouraud shading and texture mapping](gif/african_head_gouraud_shading_texture_mapping.gif)

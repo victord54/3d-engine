@@ -135,9 +135,6 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, vec4
                                          wn0.y * bc.x + wn1.y * bc.y + wn2.y * bc.z,
                                          wn0.z * bc.x + wn1.z * bc.y + wn2.z * bc.z));
             double intensity = dot(normal, light_pos);
-            p_color.r *= intensity;
-            p_color.g *= intensity;
-            p_color.b *= intensity;
 
             // Z-buffer
             p.z = p0.z * bc.x + p1.z * bc.y + p2.z * bc.z;
@@ -153,6 +150,10 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, vec4
                 int tx = texture_coords.x * texture.get_width();
                 int ty = texture_coords.y * texture.get_height();
                 p_color = texture.get(tx, ty);
+                // Apply intensity to color
+                p_color.r *= intensity;
+                p_color.g *= intensity;
+                p_color.b *= intensity;
                 image.set(x, y, p_color);
             }
         }
