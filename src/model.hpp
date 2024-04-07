@@ -11,6 +11,8 @@ struct Model
     std::vector<std::vector<int>> faces_;
     std::vector<vec3> normals_;
     std::vector<std::vector<int>> faceNormals_;
+    std::vector<vec3> textures_;
+    std::vector<std::vector<int>> faceTextures_;
 
     Model(const std::string filename);
 
@@ -20,4 +22,6 @@ struct Model
     std::vector<int> face(int idx);
     vec3 normal(int i);
     std::vector<int> faceNormal(int idx);
+    vec3 texture(int i);
+    std::vector<int> faceTexture(int idx);
 };

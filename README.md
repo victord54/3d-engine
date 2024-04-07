@@ -24,3 +24,8 @@ I implemented the filling triangle algorithm to render the faces of the object.
 After that, I implemented the z-buffer algorithm to render the faces of the object with the correct depth and also the Gouraud shading algorithm to render the faces with the correct color.
 
 ![African head with Gouraud shading](gif/african_head_gouraud_shading.gif)
+
+I added the texture mapping algorithm to render the faces of the object with a texture.
+You can see the result below.
+
+![African head with texture mapping](gif/african_head_texture_mapping.gif)

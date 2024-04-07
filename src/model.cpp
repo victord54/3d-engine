@@ -26,6 +26,16 @@ Model::Model(const std::string filename)
             }
             vertices_.push_back(v);
         }
+        if (!line.compare(0, 3, "vt "))
+        {
+            iss >> trash >> trash;
+            vec3 vt;
+            for (int i = 0; i < 3; i++)
+            {
+                iss >> vt[i];
+            }
+            textures_.push_back(vt);
+        }
         else if (!line.compare(0, 3, "vn "))
         {
             iss >> trash >> trash;
@@ -40,17 +50,22 @@ Model::Model(const std::string filename)
         {
             std::vector<int> f;
             std::vector<int> fn;
-            int itrash, idx, idxn;
+            std::vector<int> ft;
+            int itrash, idx, idxt, idxn;
             iss >> trash;
-            while (iss >> idx >> trash >> itrash >> trash >> idxn)
+            while (iss >> idx >> trash >> idxt >> trash >> idxn)
             {
-                idx--; // in wavefront obj all indices start at 1, not zero
+                // in wavefront obj all indices start at 1, not zero
+                idx--;
+                idxt--;
                 idxn--;
                 f.push_back(idx);
                 fn.push_back(idxn);
+                ft.push_back(idxt);
             }
             faces_.push_back(f);
             faceNormals_.push_back(fn);
+            faceTextures_.push_back(ft);
         }
     }
 }
@@ -83,4 +98,14 @@ vec3 Model::normal(int i)
 std::vector<int> Model::faceNormal(int idx)
 {
     return faceNormals_[idx];
+}
+
+vec3 Model::texture(int i)
+{
+    return textures_[i];
+}
+
+std::vector<int> Model::faceTexture(int idx)
+{
+    return faceTextures_[idx];
 }

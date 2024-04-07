@@ -111,7 +111,7 @@ vec3 barycentric(vec2 p0, vec2 p1, vec2 p2, vec2 p)
     return vec3(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
 }
 
-void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, double *zbuffer, TGAImage &image, TGAImage &texture)
+void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, vec4 wt0, vec4 wt1, vec4 wt2, double *zbuffer, TGAImage &image, TGAImage &texture)
 {
     // Boundig box
     int minX = std::min(p0.x, std::min(p1.x, p2.x));
@@ -146,12 +146,13 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, doub
             {
                 zbuffer[idx] = p.z;
 
-                // Texture mapping
-                vec2 uv = vec2(0, 0);
-                uv.x = wn0.x * bc.x + wn1.x * bc.y + wn2.x * bc.z;
-                uv.y = wn0.y * bc.x + wn1.y * bc.y + wn2.y * bc.z;
-                // Normalize uv coordinates
-                // p_color = texture.get(uv.x * texture.get_width(), uv.y * texture.get_height());
+                // // Texture mapping
+                vec3 texture_coords = vec3(wt0.x * bc.x + wt1.x * bc.y + wt2.x * bc.z,
+                                           wt0.y * bc.x + wt1.y * bc.y + wt2.y * bc.z,
+                                           wt0.z * bc.x + wt1.z * bc.y + wt2.z * bc.z);
+                int tx = texture_coords.x * texture.get_width();
+                int ty = texture_coords.y * texture.get_height();
+                p_color = texture.get(tx, ty);
                 image.set(x, y, p_color);
             }
         }
@@ -176,8 +177,10 @@ int main(int argc, char const *argv[])
     std::clog << "Model loaded" << std::endl;
     std::clog << "Number of vertices: " << model.nverts() << std::endl;
     std::clog << "Number of faces: " << model.nfaces() << std::endl;
-    std::clog << "Number of normals: " << model.normals_.size() << std::endl;
+    std::clog << "Number of normals vertices: " << model.normals_.size() << std::endl;
     std::clog << "Number of face normals: " << model.faceNormals_.size() << std::endl;
+    std::clog << "Number of textures vertices: " << model.textures_.size() << std::endl;
+    std::clog << "Number of face textures: " << model.faceTextures_.size() << std::endl;
 
     // Transformation matrix
     mat4 T = translate(vec3(0, 0, 0));
@@ -196,6 +199,7 @@ int main(int argc, char const *argv[])
     {
         std::vector<int> face = model.face(i);
         std::vector<int> faceNormal = model.faceNormal(i);
+        std::vector<int> faceTexture = model.faceTexture(i);
 
         vec3 mp0 = model.vert(face[0]);
         vec3 mp1 = model.vert(face[1]);
@@ -204,7 +208,14 @@ int main(int argc, char const *argv[])
         vec3 mn0 = model.normal(faceNormal[0]);
         vec3 mn1 = model.normal(faceNormal[1]);
         vec3 mn2 = model.normal(faceNormal[2]);
-        // std::clog << "Model vertices " << mp0 << ", " << mp1 << ", " << mp2 << std::endl;
+
+        vec3 mt0 = model.texture(faceTexture[0]);
+        vec3 mt1 = model.texture(faceTexture[1]);
+        vec3 mt2 = model.texture(faceTexture[2]);
+        // Convert to homogeneous coordinates
+        vec4 wt0 = vec4(mt0.x, mt0.y, mt0.z, 1);
+        vec4 wt1 = vec4(mt1.x, mt1.y, mt1.z, 1);
+        vec4 wt2 = vec4(mt2.x, mt2.y, mt2.z, 1);
 
         // Apply transformation matrix to world coordinates
         vec4 wp0 = M * vec4(mp0.x, mp0.y, mp0.z, 1);
@@ -220,10 +231,6 @@ int main(int argc, char const *argv[])
         vec4 cp0 = camera.viewMatrix() * wp0;
         vec4 cp1 = camera.viewMatrix() * wp1;
         vec4 cp2 = camera.viewMatrix() * wp2;
-
-        vec4 cn0 = camera.viewMatrix() * wn0;
-        vec4 cn1 = camera.viewMatrix() * wn1;
-        vec4 cn2 = camera.viewMatrix() * wn2;
 
         // Apply camera projection matrix
         vec4 pp0 = camera.projectionMatrix() * cp0;
@@ -244,7 +251,7 @@ int main(int argc, char const *argv[])
         p2.y = (p2.y + 1) * height / 2;
 
         // Draw triangle
-        fill_triangle(p0, p1, p2, wn0, wn1, wn2, zbuffer, image, texture);
+        fill_triangle(p0, p1, p2, wn0, wn1, wn2, wt0, wt1, wt2, zbuffer, image, texture);
     }
 
     // Create out folder if it doesn't exist
