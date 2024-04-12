@@ -113,7 +113,7 @@ bool TGAImage::read_tga_file(const char *filename)
     {
         flip_horizontally();
     }
-    std::cerr << width << "x" << height << "/" << bytespp * 8 << "\n";
+    // std::cerr << width << "x" << height << "/" << bytespp * 8 << "\n";
     in.close();
     return true;
 }
