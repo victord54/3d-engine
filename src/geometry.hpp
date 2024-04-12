@@ -282,3 +282,46 @@ mat<n, m> invert(const mat<m, n> &a)
 using mat2 = mat<2, 2>;
 using mat3 = mat<3, 3>;
 using mat4 = mat<4, 4>;
+
+inline mat4 translate(const vec3 &v)
+{
+    mat4 T = mat4::identity();
+    T[0][3] = v[0];
+    T[1][3] = v[1];
+    T[2][3] = v[2];
+    return T;
+}
+
+inline mat4 scale(const vec3 &v)
+{
+    mat4 S = mat4::identity();
+    S[0][0] = v[0];
+    S[1][1] = v[1];
+    S[2][2] = v[2];
+    return S;
+}
+
+inline mat4 rotate(const vec3 &angles)
+{
+    // Convert angles to radians
+    vec3 angles_ = angles * (M_PI / 180.0);
+    mat4 Rx = mat4::identity();
+    Rx[1][1] = std::cos(angles_[0]);
+    Rx[1][2] = -std::sin(angles_[0]);
+    Rx[2][1] = std::sin(angles_[0]);
+    Rx[2][2] = std::cos(angles_[0]);
+
+    mat4 Ry = mat4::identity();
+    Ry[0][0] = std::cos(angles_[1]);
+    Ry[0][2] = std::sin(angles_[1]);
+    Ry[2][0] = -std::sin(angles_[1]);
+    Ry[2][2] = std::cos(angles_[1]);
+
+    mat4 Rz = mat4::identity();
+    Rz[0][0] = std::cos(angles_[2]);
+    Rz[0][1] = -std::sin(angles_[2]);
+    Rz[1][0] = std::sin(angles_[2]);
+    Rz[1][1] = std::cos(angles_[2]);
+
+    return Rz * Ry * Rx;
+}
