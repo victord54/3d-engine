@@ -15,11 +15,6 @@
 #define WIDTH 800
 #define HEIGHT 800
 
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red = TGAColor(255, 0, 0, 255);
-const TGAColor green = TGAColor(0, 255, 0, 255);
-const TGAColor blue = TGAColor(0, 0, 255, 255);
-
 mat4 translate(const vec3 &v)
 {
     mat4 T = mat4::identity();
@@ -111,8 +106,24 @@ vec3 barycentric(vec2 p0, vec2 p1, vec2 p2, vec2 p)
     return vec3(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
 }
 
-void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, vec4 wt0, vec4 wt1, vec4 wt2, double *zbuffer, TGAImage &image, TGAImage &texture)
+void fill_triangle(std::vector<vec3> vertices, std::vector<vec4> world_normals, std::vector<vec4> world_textures, double *zbuffer, TGAImage &image, Model &model, vec3 light_dir)
 {
+    vec3 p0 = vertices[0];
+    vec3 p1 = vertices[1];
+    vec3 p2 = vertices[2];
+
+    vec4 wn0 = world_normals[0];
+    vec4 wn1 = world_normals[1];
+    vec4 wn2 = world_normals[2];
+
+    vec4 wt0 = world_textures[0];
+    vec4 wt1 = world_textures[1];
+    vec4 wt2 = world_textures[2];
+
+    TGAImage &texture = model.diffusemap_;
+    TGAImage &normal_map = model.normalmap_;
+    TGAImage &specular_map = model.specularmap_;
+
     // Boundig box
     int minX = std::min(p0.x, std::min(p1.x, p2.x));
     int minY = std::min(p0.y, std::min(p1.y, p2.y));
@@ -130,11 +141,30 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, vec4
                 continue;
 
             // Goroud shading
-            vec3 light_pos = normalize(vec3(0, 0, 1));
-            vec3 normal = normalize(vec3(wn0.x * bc.x + wn1.x * bc.y + wn2.x * bc.z,
-                                         wn0.y * bc.x + wn1.y * bc.y + wn2.y * bc.z,
-                                         wn0.z * bc.x + wn1.z * bc.y + wn2.z * bc.z));
-            double intensity = dot(normal, light_pos);
+            // vec3 normal = normalize(vec3(wn0.x * bc.x + wn1.x * bc.y + wn2.x * bc.z,
+            //                              wn0.y * bc.x + wn1.y * bc.y + wn2.y * bc.z,
+            //                              wn0.z * bc.x + wn1.z * bc.y + wn2.z * bc.z));
+            // double intensity = dot(normal, light_dir);
+
+            // UV mapping
+            vec3 uv = vec3(wt0.x * bc.x + wt1.x * bc.y + wt2.x * bc.z,
+                           wt0.y * bc.x + wt1.y * bc.y + wt2.y * bc.z,
+                           wt0.z * bc.x + wt1.z * bc.y + wt2.z * bc.z);
+
+            // Normal mapping
+            int tx = uv.x * texture.get_width();
+            int ty = uv.y * texture.get_height();
+            TGAColor n_color = normal_map.get(tx, ty);
+            vec3 n = vec3(n_color.r / 255.0 * 2 - 1,
+                          n_color.g / 255.0 * 2 - 1,
+                          n_color.b / 255.0 * 2 - 1);
+            double intensity = dot(normalize(n), light_dir);
+
+            // Specular mapping
+            vec3 r = normalize(2 * n * dot(n, light_dir) - light_dir);
+            double spec = std::pow(std::max(r.z, 0.0), specular_map.get(tx, ty).raw[0]);
+            // double spec = 0;
+            // std::clog << "specular map: " << specular_map.get(tx, ty).raw[1] << std::endl;
 
             // Z-buffer
             p.z = p0.z * bc.x + p1.z * bc.y + p2.z * bc.z;
@@ -144,16 +174,23 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, vec4
                 zbuffer[idx] = p.z;
 
                 // // Texture mapping
-                vec3 texture_coords = vec3(wt0.x * bc.x + wt1.x * bc.y + wt2.x * bc.z,
-                                           wt0.y * bc.x + wt1.y * bc.y + wt2.y * bc.z,
-                                           wt0.z * bc.x + wt1.z * bc.y + wt2.z * bc.z);
-                int tx = texture_coords.x * texture.get_width();
-                int ty = texture_coords.y * texture.get_height();
+                int tx = uv.x * texture.get_width();
+                int ty = uv.y * texture.get_height();
                 p_color = texture.get(tx, ty);
-                // Apply intensity to color
-                p_color.r *= intensity;
-                p_color.g *= intensity;
-                p_color.b *= intensity;
+
+                // Apply shading to color
+                // p_color = p_color * intensity;
+                p_color.r *= (intensity + 0.6 * spec);
+                p_color.g *= (intensity + 0.6 * spec);
+                p_color.b *= (intensity + 0.6 * spec);
+
+                // Apply ambient light
+                int ambient = 5;
+
+                p_color.r = std::min(255, std::max(0, (int)p_color.r) + ambient);
+                p_color.g = std::min(255, std::max(0, (int)p_color.g) + ambient);
+                p_color.b = std::min(255, std::max(0, (int)p_color.b) + ambient);
+
                 image.set(x, y, p_color);
             }
         }
@@ -162,31 +199,38 @@ void fill_triangle(vec3 p0, vec3 p1, vec3 p2, vec4 wn0, vec4 wn1, vec4 wn2, vec4
 
 int main(int argc, char const *argv[])
 {
+    const TGAColor white = TGAColor(255, 255, 255, 255);
+    const TGAColor black = TGAColor(0, 0, 0, 255);
+    const TGAColor red = TGAColor(255, 0, 0, 255);
+    const TGAColor green = TGAColor(0, 255, 0, 255);
+    const TGAColor blue = TGAColor(0, 0, 255, 255);
+
     int angle = 0;
     if (argc > 1)
     {
         angle = std::stoi(argv[1]);
     }
+
     const int width = WIDTH - 1;
     const int height = HEIGHT - 1;
+
     TGAImage image(WIDTH, HEIGHT, TGAImage::RGB);
-    TGAImage texture;
-    texture.read_tga_file("obj/african_head/african_head_diffuse.tga");
-    texture.flip_vertically();
-    Camera camera(vec3(0, 0, 2.1), vec3(0, 0, 0), 90, 0.1, 1000);
     Model model("obj/african_head/african_head.obj");
-    std::clog << "Model loaded" << std::endl;
-    std::clog << "Number of vertices: " << model.nverts() << std::endl;
-    std::clog << "Number of faces: " << model.nfaces() << std::endl;
-    std::clog << "Number of normals vertices: " << model.normals_.size() << std::endl;
-    std::clog << "Number of face normals: " << model.faceNormals_.size() << std::endl;
-    std::clog << "Number of textures vertices: " << model.textures_.size() << std::endl;
-    std::clog << "Number of face textures: " << model.faceTextures_.size() << std::endl;
+
+    model.set_diffusemap("obj/african_head/african_head_diffuse.tga");
+    model.set_normalmap("obj/african_head/african_head_nm.tga");
+    model.set_specularmap("obj/african_head/african_head_spec.tga");
+    vec3 eye = vec3(0, 0, 2.1);
+    vec3 lookat = vec3(0, 0, 0);
+    double fov = 90, near = 0.1, far = 1000;
+    Camera camera(eye, lookat, fov, near, far);
+
+    vec3 light_dir = normalize(vec3(0, 0, 1));
 
     // Transformation matrix
     mat4 T = translate(vec3(0, 0, 0));
     mat4 S = scale(vec3(1, 1, 1));
-    mat4 R = rotate(vec3(0, angle, 0));
+    mat4 R = rotate(vec3(0, 0, 0));
     mat4 M = T * S * R;
 
     double zbuffer[WIDTH * HEIGHT];
@@ -251,8 +295,13 @@ int main(int argc, char const *argv[])
         p2.x = (p2.x + 1) * width / 2;
         p2.y = (p2.y + 1) * height / 2;
 
+        std::vector<vec3> vertices = {p0, p1, p2};
+        std::vector<vec4> world_vertices = {wp0, wp1, wp2};
+        std::vector<vec4> world_normals = {wn0, wn1, wn2};
+        std::vector<vec4> world_textures = {wt0, wt1, wt2};
+
         // Draw triangle
-        fill_triangle(p0, p1, p2, wn0, wn1, wn2, wt0, wt1, wt2, zbuffer, image, texture);
+        fill_triangle(vertices, world_normals, world_textures, zbuffer, image, model, light_dir);
     }
 
     // Create out folder if it doesn't exist
@@ -268,6 +317,5 @@ int main(int argc, char const *argv[])
         out_file = "out/output.tga";
     }
     image.write_tga_file(out_file.c_str());
-    // std::clog << "Image saved to " << out_file << std::endl;
     return 0;
 }
