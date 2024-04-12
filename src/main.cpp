@@ -52,7 +52,7 @@ int main(int argc, char const *argv[])
 
     // Draw the model after applying the transformation matrix
     engine.model.M = M;
-    engine.draw();
+    engine.draw(RenderMode::FULL);
 
     // Save the output image
     if (argc > 2)
