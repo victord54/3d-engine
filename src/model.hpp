@@ -20,6 +20,9 @@ struct Model
     TGAImage normalmap_;
     TGAImage specularmap_;
 
+    mat4 M;
+
+    Model() {}
     Model(const std::string filename);
 
     int nverts();

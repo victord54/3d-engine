@@ -283,6 +283,16 @@ using mat2 = mat<2, 2>;
 using mat3 = mat<3, 3>;
 using mat4 = mat<4, 4>;
 
+inline vec3 barycentric(vec2 p0, vec2 p1, vec2 p2, vec2 p)
+{
+    vec3 u = cross(vec3(p2.x - p0.x, p1.x - p0.x, p0.x - p.x), vec3(p2.y - p0.y, p1.y - p0.y, p0.y - p.y));
+    if (std::abs(u.z) < 1)
+    {
+        return vec3(-1, 1, 1);
+    }
+    return vec3(1.0 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
+}
+
 inline mat4 translate(const vec3 &v)
 {
     mat4 T = mat4::identity();
