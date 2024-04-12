@@ -8,6 +8,16 @@
 #include "model.hpp"
 #include "camera.hpp"
 
+enum class RenderMode
+{
+    WIREFRAME,
+    BACKFACE,
+    GOURAUD,
+    NORMALMAP,
+    TEXTURE,
+    FULL
+};
+
 struct Engine
 {
     TGAImage frameBuffer;
@@ -38,7 +48,7 @@ struct Engine
         light_dir_ = normalize(light_dir);
     }
 
-    void draw()
+    void draw(RenderMode render = RenderMode::FULL)
     {
         for (int i = 0; i < model.nfaces(); i++)
         {
@@ -100,20 +110,38 @@ struct Engine
                 screenPoints[j].x = (screenPoints[j].x + 1) * frameBuffer.get_width() / 2;
                 screenPoints[j].y = (screenPoints[j].y + 1) * frameBuffer.get_height() / 2;
             }
-
             // Draw triangle
-            drawTriangle(screenPoints, worldPoints, worldNormals, worldTextures);
+            if (render == RenderMode::WIREFRAME)
+                drawWireframe(screenPoints);
+            // else if (render == RenderMode::BACKFACE)
+            //     drawTriangle(screenPoints, worldNormals);
+            else if (render == RenderMode::GOURAUD)
+                drawTriangleGS(screenPoints, worldNormals);
+            else if (render == RenderMode::NORMALMAP)
+                drawTriangleNM(screenPoints, worldTextures);
+            else if (render == RenderMode::TEXTURE)
+                drawTriangleT(screenPoints, worldNormals, worldTextures);
+            else if (render == RenderMode::FULL)
+                drawTriangleFull(screenPoints, worldTextures);
         }
     }
 
+    void save(std::string filename)
+    {
+        // Create out folder if it doesn't exist
+        std::filesystem::create_directory("out");
+        frameBuffer.flip_vertically();
+        std::string out_file = "out/" + filename;
+        frameBuffer.write_tga_file(out_file.c_str());
+    }
+
 private:
-    void drawTriangle(vec3 *screenPoints, vec4 *worldPoints, vec4 *worldNormals, vec4 *worldTextures)
+    /* Fonctionne */
+    void drawTriangleT(vec3 *screenPoints, vec4 *worldNormals, vec4 *worldTextures)
     {
         // Boundig box
-        int minX = std::min(screenPoints[0].x, std::min(screenPoints[1].x, screenPoints[2].x));
-        int minY = std::min(screenPoints[0].y, std::min(screenPoints[1].y, screenPoints[2].y));
-        int maxX = std::max(screenPoints[0].x, std::max(screenPoints[1].x, screenPoints[2].x));
-        int maxY = std::max(screenPoints[0].y, std::max(screenPoints[1].y, screenPoints[2].y));
+        int minX, minY, maxX, maxY;
+        boundingBox(screenPoints, &minX, &minY, &maxX, &maxY);
 
         for (int x = minX; x <= maxX; x++)
         {
@@ -121,7 +149,7 @@ private:
             {
                 TGAColor p_color = TGAColor(255, 255, 255, 255);
                 vec3 p = vec3(x, y, 0);
-                vec3 bc = barycentric(vec2(screenPoints[0].x, screenPoints[0].y), vec2(screenPoints[1].x, screenPoints[1].y), vec2(screenPoints[2].x, screenPoints[2].y), vec2(p.x, p.y));
+                vec3 bc = barycentric(screenPoints[0], screenPoints[1], screenPoints[2], p);
                 if (bc.x < 0 || bc.y < 0 || bc.z < 0)
                     continue;
 
@@ -134,21 +162,96 @@ private:
                 zBuffer[idx] = p.z;
 
                 // Goroud shading
-                // vec3 normal = normalize(vec3(worldNormals[0].x * bc.x + worldNormals[1].x * bc.y + worldNormals[2].x * bc.z,
-                //                              worldNormals[0].y * bc.x + worldNormals[1].y * bc.y + worldNormals[2].y * bc.z,
-                //                              worldNormals[0].z * bc.x + worldNormals[1].z * bc.y + worldNormals[2].z * bc.z));
-                // double intensity = dot(normal, light_dir_);
+                vec3 normal = normalize(vec3(worldNormals[0].x * bc.x + worldNormals[1].x * bc.y + worldNormals[2].x * bc.z,
+                                             worldNormals[0].y * bc.x + worldNormals[1].y * bc.y + worldNormals[2].y * bc.z,
+                                             worldNormals[0].z * bc.x + worldNormals[1].z * bc.y + worldNormals[2].z * bc.z));
 
                 // UV mapping
-                vec3 uv = vec3(worldTextures[0].x * bc.x + worldTextures[1].x * bc.y + worldTextures[2].x * bc.z,
-                               worldTextures[0].y * bc.x + worldTextures[1].y * bc.y + worldTextures[2].y * bc.z,
-                               worldTextures[0].z * bc.x + worldTextures[1].z * bc.y + worldTextures[2].z * bc.z);
-                int tx = uv.x * model.normalmap_.get_width();
-                int ty = uv.y * model.normalmap_.get_height();
-                TGAColor normal_color = model.normalmap_.get(tx, ty);
-                vec3 normal = vec3(normal_color.r / 255.0 * 2.0 - 1.0,
-                                   normal_color.g / 255.0 * 2.0 - 1.0,
-                                   normal_color.b / 255.0 * 2.0 - 1.0);
+                vec2 uv = vec2(worldTextures[0].x * bc.x + worldTextures[1].x * bc.y + worldTextures[2].x * bc.z,
+                               worldTextures[0].y * bc.x + worldTextures[1].y * bc.y + worldTextures[2].y * bc.z);
+                double intensity = dot(normal, light_dir_);
+
+                // Texture mapping
+                p_color = model.diffuse(uv);
+
+                p_color.r *= intensity;
+                p_color.g *= intensity;
+                p_color.b *= intensity;
+
+                frameBuffer.set(x, y, p_color);
+            }
+        }
+    }
+
+    /* Fonctionne */
+    void drawTriangleGS(vec3 *screenPoints, vec4 *worldNormals)
+    {
+        // Boundig box
+        int minX, minY, maxX, maxY;
+        boundingBox(screenPoints, &minX, &minY, &maxX, &maxY);
+
+        for (int x = minX; x <= maxX; x++)
+        {
+            for (int y = minY; y <= maxY; y++)
+            {
+                TGAColor p_color = TGAColor(255, 255, 255, 255);
+                vec3 p = vec3(x, y, 0);
+                vec3 bc = barycentric(screenPoints[0], screenPoints[1], screenPoints[2], p);
+                if (bc.x < 0 || bc.y < 0 || bc.z < 0)
+                    continue;
+
+                // ZBuffer
+                p.z = screenPoints[0].z * bc.x + screenPoints[1].z * bc.y + screenPoints[2].z * bc.z;
+                int idx = x + y * frameBuffer.get_width();
+                if (zBuffer[idx] <= p.z)
+                    continue;
+
+                zBuffer[idx] = p.z;
+
+                // Goroud shading
+                vec3 normal = normalize(vec3(worldNormals[0].x * bc.x + worldNormals[1].x * bc.y + worldNormals[2].x * bc.z,
+                                             worldNormals[0].y * bc.x + worldNormals[1].y * bc.y + worldNormals[2].y * bc.z,
+                                             worldNormals[0].z * bc.x + worldNormals[1].z * bc.y + worldNormals[2].z * bc.z));
+                double intensity = dot(normal, light_dir_);
+
+                p_color.r *= intensity;
+                p_color.g *= intensity;
+                p_color.b *= intensity;
+
+                frameBuffer.set(x, y, p_color);
+            }
+        }
+    }
+
+    /* Fonctionne */
+    void drawTriangleFull(vec3 *screenPoints, vec4 *worldTextures)
+    {
+        // Boundig box
+        int minX, minY, maxX, maxY;
+        boundingBox(screenPoints, &minX, &minY, &maxX, &maxY);
+
+        for (int x = minX; x <= maxX; x++)
+        {
+            for (int y = minY; y <= maxY; y++)
+            {
+                TGAColor p_color = TGAColor(255, 255, 255, 255);
+                vec3 p = vec3(x, y, 0);
+                vec3 bc = barycentric(screenPoints[0], screenPoints[1], screenPoints[2], p);
+                if (bc.x < 0 || bc.y < 0 || bc.z < 0)
+                    continue;
+
+                // ZBuffer
+                p.z = screenPoints[0].z * bc.x + screenPoints[1].z * bc.y + screenPoints[2].z * bc.z;
+                int idx = x + y * frameBuffer.get_width();
+                if (zBuffer[idx] <= p.z)
+                    continue;
+
+                zBuffer[idx] = p.z;
+
+                // UV mapping
+                vec2 uv = vec2(worldTextures[0].x * bc.x + worldTextures[1].x * bc.y + worldTextures[2].x * bc.z,
+                               worldTextures[0].y * bc.x + worldTextures[1].y * bc.y + worldTextures[2].y * bc.z);
+                vec3 normal = model.normalmap(uv);
                 vec4 homogeneous_normal = vec4(normal.x, normal.y, normal.z, 1);
                 vec4 world_normal = model.M * homogeneous_normal;
                 normal = vec3(world_normal.x, world_normal.y, world_normal.z);
@@ -157,12 +260,10 @@ private:
 
                 // Specular mapping
                 vec3 r = normalize(2 * normal * dot(normal, light_dir_) - light_dir_);
-                double specular = pow(std::max(r.z, 0.0), model.specularmap_.get(tx, ty).raw[0]);
+                double specular = pow(std::max(r.z, 0.0), model.specular(uv));
 
                 // Texture mapping
-                tx = uv.x * model.diffusemap_.get_width();
-                ty = uv.y * model.diffusemap_.get_height();
-                p_color = model.diffusemap_.get(tx, ty);
+                p_color = model.diffuse(uv);
 
                 p_color.r *= (intensity + 0.6 * specular);
                 p_color.g *= (intensity + 0.6 * specular);
@@ -175,6 +276,110 @@ private:
                 p_color.b = std::min(255, std::max(0, int(p_color.b + ambiant)));
 
                 frameBuffer.set(x, y, p_color);
+            }
+        }
+    }
+
+    /* Fonctionne */
+    void drawTriangleNM(vec3 *screenPoints, vec4 *worldTextures)
+    {
+        // Boundig box
+        int minX, minY, maxX, maxY;
+        boundingBox(screenPoints, &minX, &minY, &maxX, &maxY);
+
+        for (int x = minX; x <= maxX; x++)
+        {
+            for (int y = minY; y <= maxY; y++)
+            {
+                TGAColor p_color = TGAColor(255, 255, 255, 255);
+                vec3 p = vec3(x, y, 0);
+                vec3 bc = barycentric(screenPoints[0], screenPoints[1], screenPoints[2], p);
+                if (bc.x < 0 || bc.y < 0 || bc.z < 0)
+                    continue;
+
+                // ZBuffer
+                p.z = screenPoints[0].z * bc.x + screenPoints[1].z * bc.y + screenPoints[2].z * bc.z;
+                int idx = x + y * frameBuffer.get_width();
+                if (zBuffer[idx] <= p.z)
+                    continue;
+
+                zBuffer[idx] = p.z;
+
+                // UV mapping
+                vec2 uv = vec2(worldTextures[0].x * bc.x + worldTextures[1].x * bc.y + worldTextures[2].x * bc.z,
+                               worldTextures[0].y * bc.x + worldTextures[1].y * bc.y + worldTextures[2].y * bc.z);
+                vec3 normal = model.normalmap(uv);
+                vec4 homogeneous_normal = vec4(normal.x, normal.y, normal.z, 1);
+                vec4 world_normal = model.M * homogeneous_normal;
+                normal = vec3(world_normal.x, world_normal.y, world_normal.z);
+
+                double intensity = dot(normal, light_dir_);
+
+                p_color.r *= intensity;
+                p_color.g *= intensity;
+                p_color.b *= intensity;
+
+                frameBuffer.set(x, y, p_color);
+            }
+        }
+    }
+
+    /* Fonctionne */
+    void drawWireframe(vec3 *screenPoints)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            int j = (i + 1) % 3;
+            line(screenPoints[i], screenPoints[j], frameBuffer, TGAColor(255, 255, 255, 255));
+        }
+    }
+
+    void boundingBox(vec3 *screenPoints, int *minX, int *minY, int *maxX, int *maxY)
+    {
+        *minX = std::min(screenPoints[0].x, std::min(screenPoints[1].x, screenPoints[2].x));
+        *minY = std::min(screenPoints[0].y, std::min(screenPoints[1].y, screenPoints[2].y));
+        *maxX = std::max(screenPoints[0].x, std::max(screenPoints[1].x, screenPoints[2].x));
+        *maxY = std::max(screenPoints[0].y, std::max(screenPoints[1].y, screenPoints[2].y));
+    }
+
+    void line(vec3 &p1, vec3 &p2, TGAImage &image, const TGAColor &color)
+    {
+        int x0 = p1.x;
+        int y0 = p1.y;
+        int x1 = p2.x;
+        int y1 = p2.y;
+        bool steep = false;
+        if (std::abs(x0 - x1) < std::abs(y0 - y1))
+        {
+            std::swap(x0, y0);
+            std::swap(x1, y1);
+            steep = true;
+        }
+        if (x0 > x1)
+        {
+            std::swap(x0, x1);
+            std::swap(y0, y1);
+        }
+        int dx = x1 - x0;
+        int dy = y1 - y0;
+        int derror2 = std::abs(dy) * 2;
+        int error2 = 0;
+        int y = y0;
+        for (int x = x0; x <= x1; x++)
+        {
+            if (steep)
+            {
+                image.set(y, x, color);
+            }
+            else
+            {
+                image.set(x, y, color);
+            }
+            error2 += derror2;
+            if (error2 > dx)
+            {
+                y += (y1 > y0 ? 1 : -1);
+                error2 -= dx * 2;
             }
         }
     }
