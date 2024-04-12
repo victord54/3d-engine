@@ -3,7 +3,9 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+
 #include "geometry.hpp"
+#include "tgaimage.hpp"
 
 struct Model
 {
@@ -13,6 +15,10 @@ struct Model
     std::vector<std::vector<int>> faceNormals_;
     std::vector<vec3> textures_;
     std::vector<std::vector<int>> faceTextures_;
+
+    TGAImage diffusemap_;
+    TGAImage normalmap_;
+    TGAImage specularmap_;
 
     Model(const std::string filename);
 
@@ -24,4 +30,12 @@ struct Model
     std::vector<int> faceNormal(int idx);
     vec3 texture(int i);
     std::vector<int> faceTexture(int idx);
+
+    void set_diffusemap(const std::string filename);
+    void set_normalmap(const std::string filename);
+    void set_specularmap(const std::string filename);
+
+    TGAColor diffuse(const vec2 &uv);
+    vec3 normalmap(const vec2 &uv);
+    double specular(const vec2 &uv);
 };

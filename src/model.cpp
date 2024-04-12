@@ -109,3 +109,42 @@ std::vector<int> Model::faceTexture(int idx)
 {
     return faceTextures_[idx];
 }
+
+void Model::set_diffusemap(std::string filename)
+{
+    diffusemap_.read_tga_file(filename.c_str());
+    diffusemap_.flip_vertically();
+}
+
+void Model::set_normalmap(std::string filename)
+{
+    normalmap_.read_tga_file(filename.c_str());
+    normalmap_.flip_vertically();
+}
+
+void Model::set_specularmap(std::string filename)
+{
+    specularmap_.read_tga_file(filename.c_str());
+    specularmap_.flip_vertically();
+}
+
+TGAColor Model::diffuse(const vec2 &uv)
+{
+    return diffusemap_.get(uv[0] * diffusemap_.get_width(), uv[1] * diffusemap_.get_height());
+}
+
+vec3 Model::normalmap(const vec2 &uv)
+{
+    TGAColor c = normalmap_.get(uv[0] * normalmap_.get_width(), uv[1] * normalmap_.get_height());
+    vec3 res;
+    for (int i = 0; i < 3; i++)
+    {
+        res[2 - i] = (double)c.raw[i] / 255.0 * 2.0 - 1.0;
+    }
+    return res;
+}
+
+double Model::specular(const vec2 &uv)
+{
+    return specularmap_.get(uv[0] * specularmap_.get_width(), uv[1] * specularmap_.get_height()).raw[0];
+}
