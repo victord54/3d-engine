@@ -55,7 +55,7 @@ int main(int argc, char const *argv[])
     engine.draw(RenderMode::FULL);
 
     // Save the output image
-    if (argc > 2)
+    if (argc >= 2)
     {
         engine.save("output_" + std::to_string(angle) + ".tga");
     }
